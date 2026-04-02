@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Cats Meet</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 0.2rem;
+    color: #f8c8dc;
+    text-shadow: 0 0 20px rgba(248, 200, 220, 0.4);
+  }
+
+  #subtitle {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 1rem;
+  }
+
+  #level-info {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+    color: #c8b8f8;
+  }
+
+  #grid {
+    display: inline-grid;
+    gap: 2px;
+    background: #16213e;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(100, 100, 255, 0.15);
+  }
+
+  .cell {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .cell.floor { background: #1a1a3e; }
+  .cell.wall { background: #0f3460; box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+  .cell.goal { background: #2a1a3e; }
+  .cell.goal::after {
+    content: '\1F495';
+    font-size: 1.2rem;
+    opacity: 0.5;
+  }
+  .cell.cat-a { background: #3a1a2e; }
+  .cell.cat-b { background: #1a2a3e; }
+
+  .cat {
+    font-size: 1.9rem;
+    position: absolute;
+    transition: all 0.15s ease;
+    z-index: 2;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,0.3));
+  }
+
+  .cat.happy {
+    animation: bounce 0.4s ease infinite alternate;
+  }
+
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-6px); }
+  }
+
+  #controls {
+    margin-top: 1rem;
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+  }
+
+  button {
+    background: #16213e;
+    color: #c8b8f8;
+    border: 1px solid #333;
+    padding: 0.5rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+  }
+
+  button:hover { background: #1a2a4e; }
+
+  #moves {
+    font-size: 0.9rem;
+    color: #888;
+  }
+
+  #message {
+    margin-top: 0.8rem;
+    font-size: 1.1rem;
+    min-height: 1.5rem;
+    color: #f8c8dc;
+    text-shadow: 0 0 10px rgba(248, 200, 220, 0.4);
+  }
+
+  #hint {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #555;
+  }
+
+  #mobile-arrows {
+    display: none;
+    margin-top: 1rem;
+    gap: 4px;
+  }
+
+  #mobile-arrows button {
+    width: 52px;
+    height: 52px;
+    font-size: 1.4rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (max-width: 600px) {
+    .cell { width: 40px; height: 40px; font-size: 1.4rem; }
+    .cat { font-size: 1.4rem; }
+    #mobile-arrows { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 52px); justify-content: center; }
+  }
+
+  #win-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 46, 0.95);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.5s;
+  }
+
+  #win-screen.show { display: flex; }
+
+  #win-screen h2 {
+    font-size: 2.5rem;
+    color: #f8c8dc;
+    margin-bottom: 0.5rem;
+  }
+
+  #win-screen .win-cats {
+    font-size: 4rem;
+    margin: 1rem 0;
+    animation: bounce 0.5s ease infinite alternate;
+  }
+
+  #win-screen p {
+    color: #888;
+    margin-bottom: 1.5rem;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Two Cats Meet</h1>
+<p id="subtitle">Both cats move together — but mirrored! Navigate them to the meeting spot.</p>
+<p id="level-info">Level 1 / <span id="total-levels"></span></p>
+<div id="grid"></div>
+<div id="controls">
+  <button onclick="resetLevel()">Reset</button>
+  <span id="moves">Moves: 0</span>
+  <button onclick="undoMove()">Undo</button>
+</div>
+<p id="message"></p>
+<p id="hint">Arrow keys or WASD to move</p>
+
+<div id="mobile-arrows">
+  <div></div>
+  <button onclick="move(0,-1)">&#9650;</button>
+  <div></div>
+  <button onclick="move(-1,0)">&#9664;</button>
+  <button onclick="move(0,1)">&#9660;</button>
+  <button onclick="move(1,0)">&#9654;</button>
+</div>
+
+<div id="win-screen">
+  <h2>They met!</h2>
+  <div class="win-cats">&#128049;&#128149;&#128570;</div>
+  <p id="win-stats"></p>
+  <button onclick="nextLevel()" id="next-btn">Next Level</button>
+</div>
+
+<script>
+// Cat A moves in the direction you press
+// Cat B moves mirrored horizontally (left/right flipped, up/down same)
+
+var LEVELS = [
+  {
+    name: "First Steps",
+    grid: [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 'A', 0, 0, 0, 'B', 0],
+      [0, 0, 0, 'G', 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[3, 2]],
+  },
+  {
+    name: "Wall Between",
+    grid: [
+      [0, 0, 0, 1, 0, 0, 0],
+      ['A', 0, 0, 1, 0, 0, 'B'],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 'G', 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[3, 3]],
+  },
+  {
+    name: "Winding Path",
+    grid: [
+      [1, 0, 0, 0, 0, 0, 1],
+      [0, 0, 1, 0, 1, 0, 0],
+      ['A', 0, 1, 0, 1, 0, 'B'],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 0, 'G', 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[3, 4]],
+  },
+  {
+    name: "Corridors",
+    grid: [
+      [0, 0, 1, 0, 1, 0, 0],
+      ['A', 0, 1, 0, 1, 0, 'B'],
+      [0, 0, 0, 0, 0, 0, 0],
+      [1, 0, 1, 0, 1, 0, 1],
+      [0, 0, 0, 'G', 0, 0, 0],
+      [0, 0, 1, 0, 1, 0, 0],
+    ],
+    goals: [[3, 4]],
+  },
+  {
+    name: "Zigzag",
+    grid: [
+      ['A', 0, 0, 1, 0, 0, 'B'],
+      [1, 1, 0, 1, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 0, 0, 0, 1, 0],
+      [0, 1, 0, 'G', 0, 1, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[3, 4]],
+  },
+  {
+    name: "Two Meeting Points",
+    grid: [
+      [0, 0, 0, 1, 0, 0, 0],
+      ['A', 0, 0, 0, 0, 0, 'B'],
+      [0, 0, 1, 0, 1, 0, 0],
+      [0, 'G', 0, 0, 0, 'G', 0],
+      [0, 0, 1, 0, 1, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[1, 3], [5, 3]],
+  },
+  {
+    name: "The Maze",
+    grid: [
+      [0, 0, 1, 0, 1, 0, 0, 0, 0],
+      ['A', 0, 1, 0, 1, 0, 1, 0, 'B'],
+      [0, 0, 0, 0, 0, 0, 1, 0, 0],
+      [1, 1, 1, 0, 1, 0, 0, 0, 1],
+      [0, 0, 0, 0, 1, 0, 1, 0, 0],
+      [0, 1, 0, 1, 1, 0, 1, 0, 0],
+      [0, 0, 0, 0, 'G', 0, 0, 0, 0],
+    ],
+    goals: [[4, 6]],
+  },
+  {
+    name: "Tight Squeeze",
+    grid: [
+      [1, 0, 0, 0, 0, 0, 1],
+      [0, 0, 1, 0, 1, 0, 0],
+      ['A', 0, 1, 0, 1, 0, 'B'],
+      [0, 0, 1, 0, 1, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [1, 0, 1, 'G', 1, 0, 1],
+      [0, 0, 0, 0, 0, 0, 0],
+    ],
+    goals: [[3, 5]],
+  },
+];
+
+var currentLevel = 0;
+var grid, cols, rows;
+var catA, catB;
+var moveCount = 0;
+var history = [];
+var won = false;
+
+var gridEl = document.getElementById('grid');
+var moveEl = document.getElementById('moves');
+var msgEl = document.getElementById('message');
+var levelEl = document.getElementById('level-info');
+var totalEl = document.getElementById('total-levels');
+var winScreen = document.getElementById('win-screen');
+var winStats = document.getElementById('win-stats');
+var nextBtn = document.getElementById('next-btn');
+
+totalEl.textContent = LEVELS.length;
+
+function loadLevel(n) {
+  var level = LEVELS[n];
+  var src = level.grid;
+  rows = src.length;
+  cols = src[0].length;
+  grid = [];
+  catA = null;
+  catB = null;
+  moveCount = 0;
+  history = [];
+  won = false;
+
+  for (var r = 0; r < rows; r++) {
+    grid[r] = [];
+    for (var c = 0; c < cols; c++) {
+      var v = src[r][c];
+      if (v === 'A') { catA = { x: c, y: r }; grid[r][c] = 0; }
+      else if (v === 'B') { catB = { x: c, y: r }; grid[r][c] = 0; }
+      else if (v === 'G') { grid[r][c] = 0; }
+      else { grid[r][c] = v; }
+    }
+  }
+
+  levelEl.textContent = 'Level ' + (n + 1) + ' / ' + LEVELS.length + ' \u2014 ' + level.name;
+  moveEl.textContent = 'Moves: 0';
+  msgEl.textContent = '';
+  winScreen.classList.remove('show');
+
+  render();
+}
+
+function isGoal(x, y) {
+  var level = LEVELS[currentLevel];
+  return level.goals.some(function(g) { return g[0] === x && g[1] === y; });
+}
+
+function isWall(x, y) {
+  if (x < 0 || x >= cols || y < 0 || y >= rows) return true;
+  return grid[y][x] === 1;
+}
+
+function render() {
+  gridEl.innerHTML = '';
+  gridEl.style.gridTemplateColumns = 'repeat(' + cols + ', 52px)';
+
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+
+      if (grid[r][c] === 1) {
+        cell.classList.add('wall');
+      } else if (isGoal(c, r)) {
+        cell.classList.add('goal');
+      } else {
+        cell.classList.add('floor');
+      }
+
+      if (catA.x === c && catA.y === r && catB.x === c && catB.y === r) {
+        cell.innerHTML = '<span class="cat happy">\uD83D\uDC31</span><span class="cat happy" style="margin-left:-8px">\uD83D\uDE3A</span>';
+        cell.style.background = '#2a1a3e';
+      } else if (catA.x === c && catA.y === r) {
+        cell.innerHTML = '<span class="cat">\uD83D\uDC31</span>';
+        cell.classList.add('cat-a');
+      } else if (catB.x === c && catB.y === r) {
+        cell.innerHTML = '<span class="cat">\uD83D\uDE3A</span>';
+        cell.classList.add('cat-b');
+      }
+
+      gridEl.appendChild(cell);
+    }
+  }
+}
+
+function move(dx, dy) {
+  if (won) return;
+
+  var newAx = catA.x + dx;
+  var newAy = catA.y + dy;
+
+  // Cat B moves mirrored horizontally
+  var newBx = catB.x - dx;
+  var newBy = catB.y + dy;
+
+  var aCanMove = !isWall(newAx, newAy);
+  var bCanMove = !isWall(newBx, newBy);
+
+  if (!aCanMove && !bCanMove) return;
+
+  history.push({ ax: catA.x, ay: catA.y, bx: catB.x, by: catB.y });
+
+  if (aCanMove) { catA.x = newAx; catA.y = newAy; }
+  if (bCanMove) { catB.x = newBx; catB.y = newBy; }
+
+  moveCount++;
+  moveEl.textContent = 'Moves: ' + moveCount;
+
+  render();
+  checkWin();
+}
+
+function checkWin() {
+  if (catA.x === catB.x && catA.y === catB.y && isGoal(catA.x, catA.y)) {
+    won = true;
+    msgEl.textContent = 'The cats found each other!';
+    winStats.textContent = 'Completed in ' + moveCount + ' move' + (moveCount !== 1 ? 's' : '');
+    if (currentLevel >= LEVELS.length - 1) {
+      nextBtn.textContent = 'You finished all levels! Play again?';
+      nextBtn.onclick = function() { currentLevel = 0; loadLevel(0); };
+    } else {
+      nextBtn.textContent = 'Next Level';
+      nextBtn.onclick = nextLevel;
+    }
+    setTimeout(function() { winScreen.classList.add('show'); }, 400);
+  }
+}
+
+function resetLevel() {
+  loadLevel(currentLevel);
+}
+
+function undoMove() {
+  if (history.length === 0 || won) return;
+  var prev = history.pop();
+  catA.x = prev.ax; catA.y = prev.ay;
+  catB.x = prev.bx; catB.y = prev.by;
+  moveCount--;
+  moveEl.textContent = 'Moves: ' + moveCount;
+  render();
+}
+
+function nextLevel() {
+  currentLevel = Math.min(currentLevel + 1, LEVELS.length - 1);
+  loadLevel(currentLevel);
+}
+
+document.addEventListener('keydown', function(e) {
+  var key = e.key.toLowerCase();
+  switch (key) {
+    case 'arrowup':    case 'w': e.preventDefault(); move(0, -1); break;
+    case 'arrowdown':  case 's': e.preventDefault(); move(0, 1);  break;
+    case 'arrowleft':  case 'a': e.preventDefault(); move(-1, 0); break;
+    case 'arrowright': case 'd': e.preventDefault(); move(1, 0);  break;
+    case 'z': if (e.ctrlKey) { e.preventDefault(); undoMove(); } break;
+    case 'r': if (e.ctrlKey) { e.preventDefault(); resetLevel(); } break;
+  }
+});
+
+var touchStart = null;
+document.addEventListener('touchstart', function(e) {
+  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+});
+document.addEventListener('touchend', function(e) {
+  if (!touchStart) return;
+  var dx = e.changedTouches[0].clientX - touchStart.x;
+  var dy = e.changedTouches[0].clientY - touchStart.y;
+  var absDx = Math.abs(dx), absDy = Math.abs(dy);
+  if (Math.max(absDx, absDy) < 30) return;
+  if (absDx > absDy) move(dx > 0 ? 1 : -1, 0);
+  else move(0, dy > 0 ? 1 : -1);
+  touchStart = null;
+});
+
+loadLevel(0);
+</script>
+</body>
+</html>
