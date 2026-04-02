@@ -321,7 +321,7 @@ var currentLevel = 0;
 var grid, cols, rows;
 var catA, catB;
 var moveCount = 0;
-var history = [];
+var moveHistory = [];
 var won = false;
 
 var gridEl = document.getElementById('grid');
@@ -344,7 +344,7 @@ function loadLevel(n) {
   catA = null;
   catB = null;
   moveCount = 0;
-  history = [];
+  moveHistory = [];
   won = false;
 
   for (var r = 0; r < rows; r++) {
@@ -424,7 +424,7 @@ function move(dx, dy) {
 
   if (!aCanMove && !bCanMove) return;
 
-  history.push({ ax: catA.x, ay: catA.y, bx: catB.x, by: catB.y });
+  moveHistory.push({ ax: catA.x, ay: catA.y, bx: catB.x, by: catB.y });
 
   if (aCanMove) { catA.x = newAx; catA.y = newAy; }
   if (bCanMove) { catB.x = newBx; catB.y = newBy; }
@@ -457,8 +457,8 @@ function resetLevel() {
 }
 
 function undoMove() {
-  if (history.length === 0 || won) return;
-  var prev = history.pop();
+  if (moveHistory.length === 0 || won) return;
+  var prev = moveHistory.pop();
   catA.x = prev.ax; catA.y = prev.ay;
   catB.x = prev.bx; catB.y = prev.by;
   moveCount--;
